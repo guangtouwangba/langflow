@@ -7,6 +7,7 @@ import {
   APIObjectType,
   APITemplateType,
   Component,
+  CustomComponentRequest,
   LoginType,
   ProfilePicturesTypeAPI,
   Users,
@@ -34,10 +35,13 @@ import {
 /**
  * Fetches all objects from the API endpoint.
  *
+ * @param {boolean} force_refresh - Whether to force a refresh of the data.
  * @returns {Promise<AxiosResponse<APIObjectType>>} A promise that resolves to an AxiosResponse containing all the objects.
  */
-export async function getAll(): Promise<AxiosResponse<APIObjectType>> {
-  return await api.get(`${BASE_URL_API}all`);
+export async function getAll(
+  force_refresh: boolean = true,
+): Promise<AxiosResponse<APIObjectType>> {
+  return await api.get(`${BASE_URL_API}all?force_refresh=${force_refresh}`);
 }
 
 const GITHUB_API_URL = "https://api.github.com";
@@ -124,6 +128,7 @@ export async function saveFlowToDatabase(newFlow: {
   style?: FlowStyleType;
   is_component?: boolean;
   folder_id?: string;
+  endpoint_name?: string;
 }): Promise<FlowType> {
   try {
     const response = await api.post(`${BASE_URL_API}flows/`, {
@@ -132,6 +137,7 @@ export async function saveFlowToDatabase(newFlow: {
       description: newFlow.description,
       is_component: newFlow.is_component,
       folder_id: newFlow.folder_id === "" ? null : newFlow.folder_id,
+      endpoint_name: newFlow.endpoint_name,
     });
 
     if (response.status !== 201) {
@@ -314,15 +320,6 @@ export async function getVersion() {
 }
 
 /**
- * Fetches the health status of the API.
- *
- * @returns {Promise<AxiosResponse<any>>} A promise that resolves to an AxiosResponse containing the health status.
- */
-export async function getHealth() {
-  return await api.get("/health"); // Health is the only endpoint that doesn't require /api/v1
-}
-
-/**
  * Fetches the build status of a flow.
  * @param {string} flowId - The ID of the flow to fetch the build status for.
  * @returns {Promise<BuildStatusTypeAPI>} A promise that resolves to an AxiosResponse containing the build status.
@@ -381,7 +378,7 @@ export async function getProfilePictures(): Promise<ProfilePicturesTypeAPI | nul
 export async function postCustomComponent(
   code: string,
   apiClass: APIClassType,
-): Promise<AxiosResponse<APIClassType>> {
+): Promise<AxiosResponse<CustomComponentRequest>> {
   // let template = apiClass.template;
   return await api.post(`${BASE_URL_API}custom_component`, {
     code,
@@ -1074,34 +1071,7 @@ export async function getTransactionTable(
   return { rows: rows.data, columns };
 }
 
-export async function getMessagesTable(
-  mode: "intersection" | "union",
-  id?: string,
-  excludedFields?: string[],
-  params = {},
-): Promise<{ rows: Array<Message>; columns: Array<ColDef | ColGroupDef> }> {
-  const config = {};
-  if (id) {
-    config["params"] = { flow_id: id };
-  }
-  if (params) {
-    config["params"] = { ...config["params"], ...params };
-  }
-  const rows = await api.get(`${BASE_URL_API}monitor/messages`, config);
-
-  const rowsOrganized = rows.data;
-
-  console.log(rowsOrganized);
-
-  const columns = extractColumnsFromRows(rowsOrganized, mode, excludedFields);
-  const sessions = new Set<string>();
-  rowsOrganized.forEach((row) => {
-    sessions.add(row.session_id);
-  });
-  return { rows: rowsOrganized, columns };
-}
-
-export async function deleteMessagesFn(ids: number[]) {
+export async function deleteMessagesFn(ids: string[]) {
   try {
     return await api.delete(`${BASE_URL_API}monitor/messages`, {
       data: ids,
@@ -1113,5 +1083,8 @@ export async function deleteMessagesFn(ids: number[]) {
 }
 
 export async function updateMessageApi(data: Message) {
-  return await api.post(`${BASE_URL_API}monitor/messages/${data.index}`, data);
+  if (data.files && typeof data.files === "string") {
+    data.files = JSON.parse(data.files);
+  }
+  return await api.put(`${BASE_URL_API}monitor/messages/${data.id}`, data);
 }

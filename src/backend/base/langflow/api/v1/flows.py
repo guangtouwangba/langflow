@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
@@ -43,13 +44,39 @@ def create_flow(
         # based on the highest number found
         if session.exec(select(Flow).where(Flow.name == flow.name).where(Flow.user_id == current_user.id)).first():
             flows = session.exec(
-                select(Flow).where(Flow.name.like(f"{flow.name} (%")).where(Flow.user_id == current_user.id)
+                select(Flow).where(Flow.name.like(f"{flow.name} (%")).where(Flow.user_id == current_user.id)  # type: ignore
             ).all()
             if flows:
-                numbers = [int(flow.name.split("(")[1].split(")")[0]) for flow in flows]
-                flow.name = f"{flow.name} ({max(numbers) + 1})"
+                extract_number = re.compile(r"\((\d+)\)$")
+                numbers = []
+                for _flow in flows:
+                    result = extract_number.search(_flow.name)
+                    if result:
+                        numbers.append(int(result.groups(1)[0]))
+                if numbers:
+                    flow.name = f"{flow.name} ({max(numbers) + 1})"
             else:
                 flow.name = f"{flow.name} (1)"
+        # Now check if the endpoint is unique
+        if (
+            flow.endpoint_name
+            and session.exec(
+                select(Flow).where(Flow.endpoint_name == flow.endpoint_name).where(Flow.user_id == current_user.id)
+            ).first()
+        ):
+            flows = session.exec(
+                select(Flow)
+                .where(Flow.endpoint_name.like(f"{flow.endpoint_name}-%"))  # type: ignore
+                .where(Flow.user_id == current_user.id)
+            ).all()
+            if flows:
+                # The endpoitn name is like "my-endpoint","my-endpoint-1", "my-endpoint-2"
+                # so we need to get the highest number and add 1
+                # we need to get the last part of the endpoint name
+                numbers = [int(flow.endpoint_name.split("-")[-1]) for flow in flows]  # type: ignore
+                flow.endpoint_name = f"{flow.endpoint_name}-{max(numbers) + 1}"
+            else:
+                flow.endpoint_name = f"{flow.endpoint_name}-1"
 
         db_flow = Flow.model_validate(flow, from_attributes=True)
         db_flow.updated_at = datetime.now(timezone.utc)
@@ -184,11 +211,11 @@ def update_flow(
         if settings_service.settings.remove_api_keys:
             flow_data = remove_api_keys(flow_data)
         for key, value in flow_data.items():
-            if value is not None:
-                setattr(db_flow, key, value)
+            setattr(db_flow, key, value)
         webhook_component = get_webhook_component_in_flow(db_flow.data)
         db_flow.webhook = webhook_component is not None
         db_flow.updated_at = datetime.now(timezone.utc)
+
         if db_flow.folder_id is None:
             default_folder = session.exec(select(Folder).where(Folder.name == DEFAULT_FOLDER_NAME)).first()
             if default_folder:
@@ -273,7 +300,7 @@ async def upload_file(
     if "flows" in data:
         flow_list = FlowListCreate(**data)
     else:
-        flow_list = FlowListCreate(flows=[FlowCreate(**flow) for flow in data])
+        flow_list = FlowListCreate(flows=[FlowCreate(**data)])
     # Now we set the user_id for all flows
     for flow in flow_list.flows:
         flow.user_id = current_user.id

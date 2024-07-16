@@ -196,7 +196,7 @@
 
   /* The same as primary-input but no-truncate */
   .textarea-primary {
-    @apply form-input block w-full rounded-md border-border bg-background px-3 text-left shadow-sm placeholder:text-muted-foreground focus:border-ring focus:placeholder-transparent focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm;
+    @apply form-input block w-full rounded-md border-border bg-muted px-3 text-left shadow-sm placeholder:text-muted-foreground focus:border-ring focus:placeholder-transparent focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm;
   }
 
   .input-edit-node {
@@ -411,7 +411,7 @@
   }
 
   .error-build-message {
-    @apply mt-6 w-96 cursor-pointer rounded-md bg-error-background p-4 shadow-xl;
+    @apply mt-6 w-96 rounded-md bg-error-background p-4 shadow-xl;
   }
   .error-build-message-circle {
     @apply alert-icon text-status-red;
@@ -544,6 +544,13 @@
   }
   .dropdown-component-check-icon {
     @apply h-5 w-5 text-primary;
+  }
+
+  .multiselect-component-outline {
+    @apply input-edit-node relative pr-8;
+  }
+  .multiselect-component-false-outline {
+    @apply primary-input py-2 pl-3 pr-10 text-left;
   }
 
   .edit-flow-arrangement {
@@ -931,7 +938,7 @@
   }
 
   .icons-parameters-comp {
-    @apply ml-3 h-6 w-6;
+    @apply h-6 w-6;
   }
 
   .form-modal-lock-true {
@@ -944,11 +951,11 @@
     @apply bg-white text-primary;
   }
   .code-highlight {
-    @apply block max-h-[64vh] w-full overflow-y-hidden border-0 px-3 py-2 text-sm outline-0 word-break-break-word;
+    @apply block w-full overflow-auto border-0 px-3 py-2 text-sm outline-0 word-break-break-word;
   }
 
   .code-nohighlight {
-    @apply block max-h-[70vh] w-full overflow-y-hidden border-0 px-3 py-2 text-sm outline-0 word-break-break-word;
+    @apply block w-full overflow-auto border-0 px-3 py-2 text-sm outline-0 word-break-break-word;
   }
   .form-modal-lockchat {
     @apply form-input block w-full rounded-md border-border p-4 pr-16 custom-scroll focus:border-ring focus:ring-ring sm:text-sm;

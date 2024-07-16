@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AlertDropdown from "../../alerts/alertDropDown";
 import profileCircle from "../../assets/profile-circle.png";
 import {
-  BACKEND_URL,
   BASE_URL_API,
   LOCATIONS_TO_RETURN,
   USER_PROJECTS_HEADER,
@@ -18,7 +17,7 @@ import useFlowStore from "../../stores/flowStore";
 import useFlowsManagerStore from "../../stores/flowsManagerStore";
 import { useLocationStore } from "../../stores/locationStore";
 import { useStoreStore } from "../../stores/storeStore";
-import IconComponent from "../genericIconComponent";
+import IconComponent, { ForwardedIconComponent } from "../genericIconComponent";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -49,6 +48,10 @@ export default function Header(): JSX.Element {
 
   const routeHistory = useLocationStore((state) => state.routeHistory);
 
+  const profileImageUrl =
+    `${BASE_URL_API}files/profile_pictures/${
+      userData?.profile_image ?? "Space/046-rocket.svg"
+    }` ?? profileCircle;
   async function checkForChanges(): Promise<void> {
     if (nodes.length === 0) {
       await removeFlow(id!);
@@ -85,8 +88,7 @@ export default function Header(): JSX.Element {
         </Link>
         {showArrowReturnIcon && (
           <Button
-            variant="none"
-            size="none"
+            unstyled
             onClick={() => {
               checkForChanges();
               redirectToLastLocation();
@@ -192,39 +194,24 @@ export default function Header(): JSX.Element {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  variant="none"
-                  size="none"
+                  unstyled
                   data-testid="user-profile-settings"
                   className="shrink-0"
                 >
                   <img
-                    src={
-                      `${BACKEND_URL.slice(
-                        0,
-                        BACKEND_URL.length - 1,
-                      )}${BASE_URL_API}files/profile_pictures/${
-                        userData?.profile_image ?? "Space/046-rocket.svg"
-                      }` ?? profileCircle
-                    }
+                    src={profileImageUrl}
                     className="h-7 w-7 shrink-0 focus-visible:outline-0"
                   />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="mr-1 mt-1 min-w-40">
                 {!autoLogin && (
                   <>
                     <DropdownMenuLabel>
                       <div className="flex items-center gap-3">
                         <img
-                          src={
-                            `${BACKEND_URL.slice(
-                              0,
-                              BACKEND_URL.length - 1,
-                            )}${BASE_URL_API}files/profile_pictures/${
-                              userData?.profile_image ?? "Space/046-rocket.svg"
-                            }` ?? profileCircle
-                          }
-                          className="h-5 w-5 focus-visible:outline-0 "
+                          src={profileImageUrl}
+                          className="h-5 w-5 focus-visible:outline-0"
                         />
 
                         {userData?.username ?? "User"}
@@ -235,30 +222,62 @@ export default function Header(): JSX.Element {
                 )}
                 <DropdownMenuLabel>General</DropdownMenuLabel>
                 <DropdownMenuItem
-                  className="cursor-pointer"
+                  className="cursor-pointer gap-2"
                   onClick={() => navigate("/settings")}
                 >
+                  <ForwardedIconComponent name="Settings" className="w-4" />
                   Settings
                 </DropdownMenuItem>
                 {!autoLogin && (
                   <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     {isAdmin && (
                       <DropdownMenuItem
-                        className="cursor-pointer"
+                        className="cursor-pointer gap-2"
                         onClick={() => navigate("/admin")}
                       >
+                        <ForwardedIconComponent name="Shield" className="w-4" />
                         Admin Page
                       </DropdownMenuItem>
                     )}
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Help</DropdownMenuLabel>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() =>
+                    window.open("https://docs.langflow.org/", "_blank")
+                  }
+                >
+                  <ForwardedIconComponent name="FileText" className="w-4" />
+                  Docs
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer gap-2"
+                  onClick={() =>
+                    window.open(
+                      "https://github.com/langflow-ai/langflow/discussions",
+                      "_blank",
+                    )
+                  }
+                >
+                  <ForwardedIconComponent
+                    name="MessagesSquare"
+                    className="w-4"
+                  />
+                  Discussions
+                </DropdownMenuItem>
+                {!autoLogin && (
+                  <>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      className="cursor-pointer"
+                      className="cursor-pointer gap-2"
                       onClick={() => {
                         logout();
                       }}
                     >
-                      Sign Out
+                      <ForwardedIconComponent name="LogOut" className="w-4" />
+                      Log Out
                     </DropdownMenuItem>
                   </>
                 )}

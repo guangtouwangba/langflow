@@ -13,7 +13,7 @@ export default function SingleAlert({
 
   return (
     <Transition
-      className="relative"
+      className="noflow nowheel nopan nodelete nodrag relative"
       show={show}
       appear={true}
       enter="transition-transform duration-500 ease-out"
@@ -83,7 +83,7 @@ export default function SingleAlert({
           <div className="flex-shrink-0 cursor-help">
             <IconComponent
               name="Info"
-              className="h-5 w-5 text-status-blue "
+              className="h-5 w-5 text-status-blue"
               aria-hidden="true"
             />
           </div>

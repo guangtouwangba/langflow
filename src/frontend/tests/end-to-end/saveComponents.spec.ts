@@ -20,14 +20,16 @@ test.describe("save component tests", () => {
       await page.waitForTimeout(5000);
       modalCount = await page.getByTestId("modal-title")?.count();
     }
-    await page.waitForTimeout(1000);
+    await page.waitForSelector('[data-testid="blank-flow"]', {
+      timeout: 30000,
+    });
     await page.getByTestId("blank-flow").click();
     await page.waitForTimeout(1000);
 
     // Read your file into a buffer.
     const jsonContent = readFileSync(
-      "src/frontend/tests/end-to-end/assets/flow_group_test.json",
-      "utf-8"
+      "tests/end-to-end/assets/flow_group_test.json",
+      "utf-8",
     );
 
     // Create the DataTransfer and File
@@ -49,7 +51,7 @@ test.describe("save component tests", () => {
       "drop",
       {
         dataTransfer,
-      }
+      },
     );
 
     const genericNoda = page.getByTestId("div-generic-node");
@@ -93,8 +95,9 @@ test.describe("save component tests", () => {
     if (replaceButton) {
       await page.getByTestId("replace-button").click();
     }
-    await page.waitForTimeout(3000);
-
+    await page.waitForSelector('[data-testid="extended-disclosure"]', {
+      timeout: 30000,
+    });
     await page.getByTestId("extended-disclosure").click();
     await page.getByPlaceholder("Search").click();
     await page.getByPlaceholder("Search").fill("group");

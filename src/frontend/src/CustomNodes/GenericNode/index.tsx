@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import Markdown from "react-markdown";
 import { NodeToolbar, useUpdateNodeInternals } from "reactflow";
-import IconComponent from "../../components/genericIconComponent";
+import IconComponent, {
+  ForwardedIconComponent,
+} from "../../components/genericIconComponent";
 import InputComponent from "../../components/inputComponent";
 import ShadTooltip from "../../components/shadTooltipComponent";
 import { Button } from "../../components/ui/button";
@@ -12,6 +14,7 @@ import {
   RUN_TIMESTAMP_PREFIX,
   STATUS_BUILD,
   STATUS_BUILDING,
+  STATUS_INACTIVE,
   TOOLTIP_OUTDATED_NODE,
 } from "../../constants/constants";
 import { BuildStatus } from "../../constants/enums";
@@ -23,13 +26,15 @@ import useFlowStore from "../../stores/flowStore";
 import useFlowsManagerStore from "../../stores/flowsManagerStore";
 import { useShortcutsStore } from "../../stores/shortcuts";
 import { useTypesStore } from "../../stores/typesStore";
-import { VertexBuildTypeAPI } from "../../types/api";
+import { OutputFieldType, VertexBuildTypeAPI } from "../../types/api";
 import { NodeDataType } from "../../types/flow";
 import { handleKeyDown, scapedJSONStringfy } from "../../utils/reactflowUtils";
 import { nodeColors, nodeIconsLucide } from "../../utils/styleUtils";
 import { classNames, cn } from "../../utils/utils";
 import { countHandlesFn } from "../helpers/count-handles";
 import { getSpecificClassFromBuildStatus } from "../helpers/get-class-from-build-status";
+import { getNodeInputColors } from "../helpers/get-node-input-colors";
+import { getNodeOutputColors } from "../helpers/get-node-output-colors";
 import useCheckCodeValidity from "../hooks/use-check-code-validity";
 import useIconNodeRender from "../hooks/use-icon-render";
 import useIconStatus from "../hooks/use-icons-status";
@@ -60,12 +65,7 @@ export default function GenericNode({
   const updateNodeInternals = useUpdateNodeInternals();
   const setErrorData = useAlertStore((state) => state.setErrorData);
   const isDark = useDarkStore((state) => state.dark);
-  const buildStatus = useFlowStore(
-    (state) => state.flowBuildStatus[data.id]?.status,
-  );
-  const lastRunTime = useFlowStore(
-    (state) => state.flowBuildStatus[data.id]?.timestamp,
-  );
+
   const takeSnapshot = useFlowsManagerStore((state) => state.takeSnapshot);
 
   const [inputName, setInputName] = useState(false);
@@ -75,6 +75,13 @@ export default function GenericNode({
     data.node?.description!,
   );
   const [isOutdated, setIsOutdated] = useState(false);
+  const [isUserEdited, setIsUserEdited] = useState(false);
+  const buildStatus = useFlowStore(
+    (state) => state.flowBuildStatus[data.id]?.status,
+  );
+  const lastRunTime = useFlowStore(
+    (state) => state.flowBuildStatus[data.id]?.timestamp,
+  );
   const [validationStatus, setValidationStatus] =
     useState<VertexBuildTypeAPI | null>(null);
   const [handles, setHandles] = useState<number>(0);
@@ -90,6 +97,7 @@ export default function GenericNode({
     data.node!,
     setNode,
     setIsOutdated,
+    setIsUserEdited,
     updateNodeInternals,
   );
 
@@ -164,9 +172,9 @@ export default function GenericNode({
     deleteNode(data.id);
   }
 
-  useCheckCodeValidity(data, templates, setIsOutdated, types);
-  useValidationStatusString(validationStatus, setValidationString);
+  useCheckCodeValidity(data, templates, setIsOutdated, setIsUserEdited, types);
   useUpdateValidationStatus(data?.id, flowPool, setValidationStatus);
+  useValidationStatusString(validationStatus, setValidationString);
 
   const iconNodeRender = useIconNodeRender(
     data,
@@ -209,6 +217,8 @@ export default function GenericNode({
 
   const [loadingUpdate, setLoadingUpdate] = useState(false);
 
+  const [showHiddenOutputs, setShowHiddenOutputs] = useState(false);
+
   const handleUpdateCode = () => {
     setLoadingUpdate(true);
     takeSnapshot();
@@ -222,13 +232,21 @@ export default function GenericNode({
     if (data.node) {
       postCustomComponent(currentCode, data.node)
         .then((apiReturn) => {
-          const { data } = apiReturn;
-          if (data && updateNodeCode) {
-            updateNodeCode(data, currentCode, "code");
+          const { data, type } = apiReturn.data;
+          if (data && type && updateNodeCode) {
+            updateNodeCode(data, currentCode, "code", type);
             setLoadingUpdate(false);
           }
         })
         .catch((err) => {
+          setErrorData({
+            title: "Error updating Compoenent code",
+            list: [
+              "There was an error updating the Component.",
+              "If the error persists, please report it on our Discord or GitHub.",
+            ],
+          });
+          setLoadingUpdate(false);
           console.log(err);
         });
     }
@@ -239,6 +257,12 @@ export default function GenericNode({
       handleUpdateCode();
     }
   }
+
+  const shownOutputs =
+    data.node!.outputs?.filter((output) => !output.hidden) ?? [];
+
+  const hiddenOutputs =
+    data.node!.outputs?.filter((output) => output.hidden) ?? [];
 
   function handlePlayWShortcut() {
     if (buildStatus === BuildStatus.BUILDING || isBuilding || !selected) return;
@@ -254,6 +278,43 @@ export default function GenericNode({
   useHotkeys(play, handlePlayWShortcut, { preventDefault });
 
   const shortcuts = useShortcutsStore((state) => state.shortcuts);
+
+  const renderOutputParameter = (output: OutputFieldType, idx: number) => {
+    return (
+      <ParameterComponent
+        index={idx}
+        key={
+          scapedJSONStringfy({
+            output_types: output.types,
+            name: output.name,
+            id: data.id,
+            dataType: data.type,
+          }) + idx
+        }
+        data={data}
+        colors={getNodeOutputColors(output, data, types)}
+        outputProxy={output.proxy}
+        title={output.display_name ?? output.name}
+        tooltipTitle={output.selected ?? output.types[0]}
+        id={{
+          output_types: [output.selected ?? output.types[0]],
+          id: data.id,
+          dataType: data.type,
+          name: output.name,
+        }}
+        type={output.types.join("|")}
+        left={false}
+        showNode={showNode}
+        outputName={output.name}
+      />
+    );
+  };
+
+  useEffect(() => {
+    if (hiddenOutputs && hiddenOutputs.length == 0) {
+      setShowHiddenOutputs(false);
+    }
+  }, [hiddenOutputs]);
 
   const memoizedNodeToolbarComponent = useMemo(() => {
     return (
@@ -274,11 +335,12 @@ export default function GenericNode({
           }}
           setShowState={setShowNode}
           numberOfHandles={handles}
+          numberOfOutputHandles={shownOutputs.length ?? 0}
           showNode={showNode}
           openAdvancedModal={false}
           onCloseAdvancedModal={() => {}}
-          selected={selected}
           updateNode={handleUpdateCode}
+          isOutdated={isOutdated && isUserEdited}
         />
       </NodeToolbar>
     );
@@ -292,6 +354,7 @@ export default function GenericNode({
     showNode,
     updateNodeCode,
     isOutdated,
+    isUserEdited,
     selected,
     shortcuts,
     //    openWDoubleCLick,
@@ -323,14 +386,14 @@ export default function GenericNode({
             className={
               "generic-node-div-title " +
               (!showNode
-                ? " relative h-24 w-24 rounded-full "
-                : " justify-between rounded-t-lg ")
+                ? " relative h-24 w-24 rounded-full"
+                : " justify-between rounded-t-lg")
             }
           >
             <div
               className={
                 "generic-node-title-arrangement rounded-full" +
-                (!showNode && " justify-center ")
+                (!showNode && " justify-center")
               }
               data-testid="generic-node-title-arrangement"
             >
@@ -383,12 +446,11 @@ export default function GenericNode({
                           {data.node?.display_name}
                         </div>
                       </ShadTooltip>
-                      {isOutdated && (
+                      {isOutdated && !isUserEdited && (
                         <ShadTooltip content={TOOLTIP_OUTDATED_NODE}>
                           <Button
                             onClick={handleUpdateCode}
-                            variant="none"
-                            size="none"
+                            unstyled
                             className={"group p-1"}
                             loading={loadingUpdate}
                           >
@@ -415,7 +477,7 @@ export default function GenericNode({
                         !data.node!.template[templateField]?.advanced && (
                           <ParameterComponent
                             selected={selected}
-                            index={idx.toString()}
+                            index={idx}
                             key={scapedJSONStringfy({
                               inputTypes:
                                 data.node!.template[templateField].input_types,
@@ -425,36 +487,11 @@ export default function GenericNode({
                               proxy: data.node!.template[templateField].proxy,
                             })}
                             data={data}
-                            color={
-                              data.node?.template[templateField].input_types &&
-                              data.node?.template[templateField].input_types!
-                                .length > 0
-                                ? nodeColors[
-                                    data.node?.template[templateField]
-                                      .input_types![
-                                      data.node?.template[templateField]
-                                        .input_types!.length - 1
-                                    ]
-                                  ] ??
-                                  nodeColors[
-                                    types[
-                                      data.node?.template[templateField]
-                                        .input_types![
-                                        data.node?.template[templateField]
-                                          .input_types!.length - 1
-                                      ]
-                                    ]
-                                  ]
-                                : nodeColors[
-                                    data.node?.template[templateField].type!
-                                  ] ??
-                                  nodeColors[
-                                    types[
-                                      data.node?.template[templateField].type!
-                                    ]
-                                  ] ??
-                                  nodeColors.unknown
-                            }
+                            colors={getNodeInputColors(
+                              data.node?.template[templateField].input_types,
+                              data.node?.template[templateField].type,
+                              types,
+                            )}
                             title={getFieldTitle(
                               data.node?.template!,
                               templateField,
@@ -487,31 +524,9 @@ export default function GenericNode({
                           />
                         ),
                     )}
-                  <ParameterComponent
-                    selected={selected}
-                    key={scapedJSONStringfy({
-                      baseClasses: data.node!.base_classes,
-                      id: data.id,
-                      dataType: data.type,
-                    })}
-                    data={data}
-                    color={nodeColors[types[data.type]] ?? nodeColors.unknown}
-                    title={
-                      data.node?.output_types &&
-                      data.node.output_types.length > 0
-                        ? data.node.output_types.join(" | ")
-                        : data.type
-                    }
-                    tooltipTitle={data.node?.base_classes.join("\n")}
-                    id={{
-                      baseClasses: data.node!.base_classes,
-                      id: data.id,
-                      dataType: data.type,
-                    }}
-                    type={data.node?.base_classes.join("|")}
-                    left={false}
-                    showNode={showNode}
-                  />
+                  {shownOutputs &&
+                    shownOutputs.length > 0 &&
+                    renderOutputParameter(shownOutputs[0], 0)}
                 </>
               )}
             </div>
@@ -522,11 +537,18 @@ export default function GenericNode({
                     content={
                       buildStatus === BuildStatus.BUILDING ? (
                         <span> {STATUS_BUILDING} </span>
+                      ) : buildStatus === BuildStatus.INACTIVE ? (
+                        <span> {STATUS_INACTIVE} </span>
                       ) : !validationStatus ? (
                         <span className="flex">{STATUS_BUILD}</span>
                       ) : (
                         <div className="max-h-100 p-2">
-                          <div>
+                          <div className="max-h-80 overflow-auto">
+                            {validationString && (
+                              <div className="ml-1 pb-2 text-status-red">
+                                {validationString}
+                              </div>
+                            )}
                             {lastRunTime && (
                               <div className="justify-left flex font-normal text-muted-foreground">
                                 <div>{RUN_TIMESTAMP_PREFIX}</div>
@@ -556,8 +578,7 @@ export default function GenericNode({
                       setValidationStatus(null);
                       buildFlow({ stopNodeId: data.id });
                     }}
-                    variant="none"
-                    size="none"
+                    unstyled
                     className="group p-1"
                   >
                     <div
@@ -581,13 +602,14 @@ export default function GenericNode({
 
         {showNode && (
           <div
-            className={
+            className={cn(
               showNode
                 ? data.node?.description === "" && !nameEditable
-                  ? "pb-5"
-                  : "py-5"
-                : ""
-            }
+                  ? "pb-8"
+                  : "pb-8 pt-5"
+                : "",
+              "relative",
+            )}
           >
             {/* increase height!! */}
             <div className="generic-node-desc">
@@ -654,10 +676,7 @@ export default function GenericNode({
                   nameEditable ? (
                     "Double Click to Edit Description"
                   ) : (
-                    <Markdown
-                      className="markdown prose flex flex-col text-primary word-break-break-word
-    dark:prose-invert"
-                    >
+                    <Markdown className="markdown prose flex flex-col text-primary word-break-break-word dark:prose-invert">
                       {String(data.node?.description)}
                     </Markdown>
                   )}
@@ -674,7 +693,7 @@ export default function GenericNode({
                     !data.node!.template[templateField]?.advanced ? (
                       <ParameterComponent
                         selected={selected}
-                        index={idx.toString()}
+                        index={idx}
                         key={scapedJSONStringfy({
                           inputTypes:
                             data.node!.template[templateField].input_types,
@@ -684,33 +703,11 @@ export default function GenericNode({
                           proxy: data.node!.template[templateField].proxy,
                         })}
                         data={data}
-                        color={
-                          data.node?.template[templateField].input_types &&
-                          data.node?.template[templateField].input_types!
-                            .length > 0
-                            ? nodeColors[
-                                data.node?.template[templateField].input_types![
-                                  data.node?.template[templateField]
-                                    .input_types!.length - 1
-                                ]
-                              ] ??
-                              nodeColors[
-                                types[
-                                  data.node?.template[templateField]
-                                    .input_types![
-                                    data.node?.template[templateField]
-                                      .input_types!.length - 1
-                                  ]
-                                ]
-                              ]
-                            : nodeColors[
-                                data.node?.template[templateField].type!
-                              ] ??
-                              nodeColors[
-                                types[data.node?.template[templateField].type!]
-                              ] ??
-                              nodeColors.unknown
-                        }
+                        colors={getNodeInputColors(
+                          data.node?.template[templateField].input_types,
+                          data.node?.template[templateField].type,
+                          types,
+                        )}
                         title={getFieldTitle(
                           data.node?.template!,
                           templateField,
@@ -751,37 +748,56 @@ export default function GenericNode({
               >
                 {" "}
               </div>
-              {data.node!.base_classes.length > 0 && (
-                <ParameterComponent
-                  selected={selected}
-                  key={scapedJSONStringfy({
-                    baseClasses: data.node!.base_classes,
-                    id: data.id,
-                    dataType: data.type,
-                  })}
-                  data={data}
-                  color={
-                    (data.node?.output_types &&
-                    data.node.output_types.length > 0
-                      ? nodeColors[data.node.output_types[0]] ??
-                        nodeColors[types[data.node.output_types[0]]]
-                      : nodeColors[types[data.type]]) ?? nodeColors.unknown
-                  }
-                  title={
-                    data.node?.output_types && data.node.output_types.length > 0
-                      ? data.node.output_types.join(" | ")
-                      : data.type
-                  }
-                  tooltipTitle={data.node?.base_classes.join("\n")}
-                  id={{
-                    baseClasses: data.node!.base_classes,
-                    id: data.id,
-                    dataType: data.type,
-                  }}
-                  type={data.node?.base_classes.join("|")}
-                  left={false}
-                  showNode={showNode}
-                />
+              {!showHiddenOutputs &&
+                shownOutputs &&
+                shownOutputs.map((output, idx) =>
+                  renderOutputParameter(
+                    output,
+                    data.node!.outputs?.findIndex(
+                      (out) => out.name === output.name,
+                    ) ?? idx,
+                  ),
+                )}
+              <div
+                className={cn(showHiddenOutputs ? "" : "h-0 overflow-hidden")}
+              >
+                <div className="block">
+                  {data.node!.outputs &&
+                    data.node!.outputs.map((output, idx) =>
+                      renderOutputParameter(
+                        output,
+                        data.node!.outputs?.findIndex(
+                          (out) => out.name === output.name,
+                        ) ?? idx,
+                      ),
+                    )}
+                </div>
+              </div>
+              {hiddenOutputs && hiddenOutputs.length > 0 && (
+                <div
+                  className={cn(
+                    "absolute left-0 right-0 flex justify-center",
+                    (shownOutputs && shownOutputs.length > 0) ||
+                      showHiddenOutputs
+                      ? "bottom-5"
+                      : "bottom-1.5",
+                  )}
+                >
+                  <Button
+                    unstyled
+                    className="left-0 right-0 rounded-full border bg-background"
+                    onClick={() => setShowHiddenOutputs(!showHiddenOutputs)}
+                  >
+                    <ForwardedIconComponent
+                      name={"ChevronDown"}
+                      strokeWidth={1.5}
+                      className={cn(
+                        "h-5 w-5 pt-px text-muted-foreground group-hover:text-medium-indigo group-hover/node:opacity-100",
+                        showHiddenOutputs ? "rotate-180 transform" : "",
+                      )}
+                    />
+                  </Button>
+                </div>
               )}
             </>
           </div>

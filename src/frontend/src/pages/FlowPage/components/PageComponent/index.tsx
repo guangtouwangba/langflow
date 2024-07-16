@@ -34,11 +34,11 @@ import { useTypesStore } from "../../../../stores/typesStore";
 import { APIClassType } from "../../../../types/api";
 import { FlowType, NodeType } from "../../../../types/flow";
 import {
+  checkOldComponents,
   generateFlow,
   generateNodeFromFlow,
   getNodeId,
   isValidConnection,
-  reconnectEdges,
   scapeJSONParse,
   updateIds,
   validateSelection,
@@ -59,7 +59,6 @@ export default function Page({
   flow: FlowType;
   view?: boolean;
 }): JSX.Element {
-  const preventDefault = true;
   const uploadFlow = useFlowsManagerStore((state) => state.uploadFlow);
   const autoSaveCurrentFlow = useFlowsManagerStore(
     (state) => state.autoSaveCurrentFlow,
@@ -99,6 +98,7 @@ export default function Page({
   const onConnect = useFlowStore((state) => state.onConnect);
   const currentFlowId = useFlowsManagerStore((state) => state.currentFlowId);
   const setErrorData = useAlertStore((state) => state.setErrorData);
+  const setNoticeData = useAlertStore((state) => state.setNoticeData);
   const [selectionMenuVisible, setSelectionMenuVisible] = useState(false);
   const edgeUpdateSuccessful = useRef(true);
 
@@ -120,7 +120,7 @@ export default function Page({
         getRandomName(),
       );
       const newGroupNode = generateNodeFromFlow(newFlow, getNodeId);
-      const newEdges = reconnectEdges(newGroupNode, removedEdges);
+      // const newEdges = reconnectEdges(newGroupNode, removedEdges);
       setNodes([
         ...clonedNodes.filter(
           (oldNodes) =>
@@ -130,17 +130,17 @@ export default function Page({
         ),
         newGroupNode,
       ]);
-      setEdges([
-        ...clonedEdges.filter(
-          (oldEdge) =>
-            !clonedSelection!.nodes.some(
-              (selectionNode) =>
-                selectionNode.id === oldEdge.target ||
-                selectionNode.id === oldEdge.source,
-            ),
-        ),
-        ...newEdges,
-      ]);
+      // setEdges([
+      //   ...clonedEdges.filter(
+      //     (oldEdge) =>
+      //       !clonedSelection!.nodes.some(
+      //         (selectionNode) =>
+      //           selectionNode.id === oldEdge.target ||
+      //           selectionNode.id === oldEdge.source,
+      //       ),
+      //   ),
+      //   ...newEdges,
+      // ]);
     } else {
       setErrorData({
         title: INVALID_SELECTION_ERROR_ALERT,
@@ -173,31 +173,40 @@ export default function Page({
   }, [currentFlowId, reactFlowInstance]);
 
   useEffect(() => {
+    if (checkOldComponents({ nodes: flow?.data?.nodes ?? [] })) {
+      setNoticeData({
+        title:
+          "Components created before Langflow 1.0 may be unstable. Ensure components are up to date.",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     return () => {
       cleanFlow();
     };
   }, []);
 
   function handleUndo(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
-    if (!isWrappedWithClass(e, "noundo")) {
+    if (!isWrappedWithClass(e, "noflow")) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
       undo();
     }
   }
 
   function handleRedo(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
-    if (!isWrappedWithClass(e, "noundo")) {
+    if (!isWrappedWithClass(e, "noflow")) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
       redo();
     }
   }
 
   function handleGroup(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
     if (selectionMenuVisible) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
       handleGroupNode();
     }
   }
@@ -219,49 +228,52 @@ export default function Page({
   }
 
   function handleCopy(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
+    const multipleSelection = lastSelection?.nodes
+      ? lastSelection?.nodes.length > 0
+      : false;
     if (
-      !isWrappedWithClass(e, "nocopy") &&
-      window.getSelection()?.toString().length === 0 &&
-      lastSelection
+      !isWrappedWithClass(e, "noflow") &&
+      (isWrappedWithClass(e, "react-flow__node") || multipleSelection)
     ) {
-      setLastCopiedSelection(_.cloneDeep(lastSelection));
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
+      if (window.getSelection()?.toString().length === 0 && lastSelection) {
+        setLastCopiedSelection(_.cloneDeep(lastSelection));
+      }
     }
   }
 
   function handleCut(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
-    if (
-      !isWrappedWithClass(e, "nocopy") &&
-      window.getSelection()?.toString().length === 0 &&
-      lastSelection
-    ) {
-      setLastCopiedSelection(_.cloneDeep(lastSelection), true);
+    if (!isWrappedWithClass(e, "noflow")) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
+      if (window.getSelection()?.toString().length === 0 && lastSelection) {
+        setLastCopiedSelection(_.cloneDeep(lastSelection), true);
+      }
     }
   }
 
   function handlePaste(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
-    if (
-      !isWrappedWithClass(e, "nocopy") &&
-      window.getSelection()?.toString().length === 0 &&
-      lastCopiedSelection
-    ) {
-      takeSnapshot();
-      paste(lastCopiedSelection, {
-        x: position.current.x,
-        y: position.current.y,
-      });
+    if (!isWrappedWithClass(e, "noflow")) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
+      if (
+        window.getSelection()?.toString().length === 0 &&
+        lastCopiedSelection
+      ) {
+        takeSnapshot();
+        paste(lastCopiedSelection, {
+          x: position.current.x,
+          y: position.current.y,
+        });
+      }
     }
   }
 
   function handleDelete(e: KeyboardEvent) {
-    e.preventDefault();
-    (e as unknown as Event).stopImmediatePropagation();
     if (!isWrappedWithClass(e, "nodelete") && lastSelection) {
+      e.preventDefault();
+      (e as unknown as Event).stopImmediatePropagation();
       takeSnapshot();
       deleteNode(lastSelection.nodes.map((node) => node.id));
       deleteEdge(lastSelection.edges.map((edge) => edge.id));
@@ -277,23 +289,23 @@ export default function Page({
   const cutAction = useShortcutsStore((state) => state.cut);
   const pasteAction = useShortcutsStore((state) => state.paste);
   //@ts-ignore
-  useHotkeys(undoAction, handleUndo, { preventDefault });
+  useHotkeys(undoAction, handleUndo);
   //@ts-ignore
-  useHotkeys(redoAction, handleRedo, { preventDefault });
+  useHotkeys(redoAction, handleRedo);
   //@ts-ignore
-  useHotkeys(groupAction, handleGroup, { preventDefault });
+  useHotkeys(groupAction, handleGroup);
   //@ts-ignore
-  useHotkeys(duplicate, handleDuplicate, { preventDefault });
+  useHotkeys(duplicate, handleDuplicate);
   //@ts-ignore
-  useHotkeys(copyAction, handleCopy, { preventDefault });
+  useHotkeys(copyAction, handleCopy);
   //@ts-ignore
-  useHotkeys(cutAction, handleCut, { preventDefault });
+  useHotkeys(cutAction, handleCut);
   //@ts-ignore
-  useHotkeys(pasteAction, handlePaste, { preventDefault });
+  useHotkeys(pasteAction, handlePaste);
   //@ts-ignore
-  useHotkeys(deleteAction, handleDelete, { preventDefault });
+  useHotkeys(deleteAction, handleDelete);
   //@ts-ignore
-  useHotkeys("delete", handleDelete, { preventDefault });
+  useHotkeys("delete", handleDelete);
 
   useEffect(() => {
     setSHowCanvas(
@@ -500,10 +512,7 @@ export default function Page({
           >
             <Background className="" />
             {!view && (
-              <Controls
-                className="fill-foreground stroke-foreground text-primary [&>button]:border-b-border
-                   [&>button]:bg-muted hover:[&>button]:bg-border"
-              ></Controls>
+              <Controls className="fill-foreground stroke-foreground text-primary [&>button]:border-b-border [&>button]:bg-muted hover:[&>button]:bg-border"></Controls>
             )}
             <SelectionMenu
               lastSelection={lastSelection}

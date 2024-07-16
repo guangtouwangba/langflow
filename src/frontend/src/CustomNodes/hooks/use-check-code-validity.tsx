@@ -1,40 +1,38 @@
 import { useEffect } from "react";
-import { NATIVE_CATEGORIES } from "../../constants/constants";
 import { NodeDataType } from "../../types/flow";
+import { nodeNames } from "../../utils/styleUtils";
 
 const useCheckCodeValidity = (
   data: NodeDataType,
   templates: { [key: string]: any },
   setIsOutdated: (value: boolean) => void,
+  setIsUserEdited: (value: boolean) => void,
   types,
 ) => {
   useEffect(() => {
     // This one should run only once
     // first check if data.type in NATIVE_CATEGORIES
     // if not return
-    if (
-      !NATIVE_CATEGORIES.includes(types[data.type]) ||
-      !data.node?.template?.code?.value
-    )
-      return;
-    const thisNodeTemplate = templates[data.type].template;
-    // if the template does not have a code key
-    // return
-    if (!thisNodeTemplate.code) return;
-    const currentCode = thisNodeTemplate.code?.value;
+    if (!data?.node || !templates) return;
+    const currentCode = templates[data.type]?.template?.code?.value;
     const thisNodesCode = data.node!.template?.code?.value;
-    const componentsToIgnore = ["CustomComponent", "Prompt"];
-    if (
-      currentCode !== thisNodesCode &&
-      !componentsToIgnore.includes(data.type) &&
-      !(data.node?.edited ?? false)
-    ) {
-      setIsOutdated(true);
-    } else {
-      setIsOutdated(false);
-    }
+    const componentsToIgnore = ["CustomComponent"];
+    setIsOutdated(
+      currentCode &&
+        thisNodesCode &&
+        currentCode !== thisNodesCode &&
+        !componentsToIgnore.includes(data.type) &&
+        Object.keys(nodeNames).includes(types[data.type]),
+    );
+    setIsUserEdited(data.node?.edited ?? false);
     // template.code can be undefined
-  }, [data.node?.template?.code?.value, templates, setIsOutdated]);
+  }, [
+    data.node,
+    data.node?.template?.code?.value,
+    templates,
+    setIsOutdated,
+    setIsUserEdited,
+  ]);
 };
 
 export default useCheckCodeValidity;

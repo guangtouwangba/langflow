@@ -27,14 +27,13 @@ const ButtonSendWrapper = ({
         "form-modal-send-button",
         noInput
           ? "bg-high-indigo text-background"
-          : chatValue === ""
+          : chatValue
             ? "text-primary"
             : "bg-chat-send text-background",
       )}
       disabled={lockChat || saveLoading}
       onClick={(): void => send()}
-      variant="none"
-      size="none"
+      unstyled
     >
       <Case
         condition={
@@ -64,7 +63,7 @@ const ButtonSendWrapper = ({
       >
         <IconComponent
           name="LucideSend"
-          className="form-modal-send-icon "
+          className="form-modal-send-icon"
           aria-hidden="true"
         />
       </Case>

@@ -1,26 +1,34 @@
 import "ag-grid-community/styles/ag-grid.css"; // Mandatory CSS required by the grid
 import "ag-grid-community/styles/ag-theme-quartz.css"; // Optional Theme applied to the grid
 import { AgGridReact, AgGridReactProps } from "ag-grid-react";
+import cloneDeep from "lodash";
 import { ElementRef, forwardRef, useRef, useState } from "react";
+import { boolean } from "zod";
 import {
   DEFAULT_TABLE_ALERT_MSG,
   DEFAULT_TABLE_ALERT_TITLE,
 } from "../../constants/constants";
 import { useDarkStore } from "../../stores/darkStore";
 import "../../style/ag-theme-shadcn.css"; // Custom CSS applied to the grid
-import { cn, toTitleCase } from "../../utils/utils";
+import { cn } from "../../utils/utils";
 import ForwardedIconComponent from "../genericIconComponent";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import TableOptions from "./components/TableOptions";
 import resetGrid from "./utils/reset-grid-columns";
-import Loading from "../ui/loading";
 
 interface TableComponentProps extends AgGridReactProps {
   columnDefs: NonNullable<AgGridReactProps["columnDefs"]>;
   rowData: NonNullable<AgGridReactProps["rowData"]>;
   alertTitle?: string;
   alertDescription?: string;
-  editable?: boolean | string[];
+  editable?:
+    | boolean
+    | string[]
+    | {
+        field: string;
+        onUpdate: (value: any) => void;
+        editableCell: boolean;
+      }[];
   pagination?: boolean;
   onDelete?: () => void;
   onDuplicate?: () => void;
@@ -41,14 +49,7 @@ const TableComponent = forwardRef<
     let colDef = props.columnDefs.map((col, index) => {
       let newCol = {
         ...col,
-        headerName: toTitleCase(col.headerName),
       };
-      if (index === props.columnDefs.length - 1) {
-        newCol = {
-          ...newCol,
-          resizable: false,
-        };
-      }
       if (props.onSelectionChanged && index === 0) {
         newCol = {
           ...newCol,
@@ -60,12 +61,32 @@ const TableComponent = forwardRef<
       if (
         (typeof props.editable === "boolean" && props.editable) ||
         (Array.isArray(props.editable) &&
-          props.editable.includes(newCol.headerName ?? ""))
+          props.editable.every((field) => typeof field === "string") &&
+          (props.editable as Array<string>).includes(newCol.headerName ?? ""))
       ) {
         newCol = {
           ...newCol,
           editable: true,
         };
+      }
+      if (
+        Array.isArray(props.editable) &&
+        props.editable.every((field) => typeof field === "object")
+      ) {
+        const field = (
+          props.editable as Array<{
+            field: string;
+            onUpdate: (value: any) => void;
+            editableCell: boolean;
+          }>
+        ).find((field) => field.field === newCol.headerName);
+        if (field) {
+          newCol = {
+            ...newCol,
+            editable: field.editableCell,
+            onCellValueChanged: (e) => field.onUpdate(e),
+          };
+        }
       }
       return newCol;
     });
@@ -78,17 +99,11 @@ const TableComponent = forwardRef<
     const initialColumnDefs = useRef(colDef);
     const [columnStateChange, setColumnStateChange] = useState(false);
     const storeReference = props.columnDefs.map((e) => e.headerName).join("_");
-    const makeLastColumnNonResizable = (columnDefs) => {
-      columnDefs.forEach((colDef, index) => {
-        colDef.resizable = index !== columnDefs.length - 1;
-      });
-      return columnDefs;
-    };
 
     const onGridReady = (params) => {
       // @ts-ignore
       realRef.current = params;
-      const updatedColumnDefs = makeLastColumnNonResizable([...colDef]);
+      const updatedColumnDefs = [...colDef];
       params.api.setGridOption("columnDefs", updatedColumnDefs);
       const customInit = localStorage.getItem(storeReference);
       initialColumnDefs.current = params.api.getColumnDefs();
@@ -106,12 +121,12 @@ const TableComponent = forwardRef<
         }
       }, 50);
       setTimeout(() => {
-        realRef.current.api.hideOverlay();
+        realRef?.current?.api?.hideOverlay();
       }, 1000);
       if (props.onGridReady) props.onGridReady(params);
     };
     const onColumnMoved = (params) => {
-      const updatedColumnDefs = makeLastColumnNonResizable(
+      const updatedColumnDefs = cloneDeep(
         params.columnApi.getAllGridColumns().map((col) => col.getColDef()),
       );
       params.api.setGridOption("columnDefs", updatedColumnDefs);
@@ -143,8 +158,8 @@ const TableComponent = forwardRef<
           {...props}
           defaultColDef={{
             minWidth: 100,
-            autoHeight: true,
           }}
+          animateRows={false}
           columnDefs={colDef}
           ref={realRef}
           onGridReady={onGridReady}

@@ -35,10 +35,9 @@ export default function Dropdown({
 
   const PopoverContentDropdown =
     children || editNode ? PopoverContent : PopoverContentWithoutPortal;
-
   return (
     <>
-      {Object.keys(options)?.length > 0 ? (
+      {Object.keys(options ?? [])?.length > 0 ? (
         <>
           <Popover open={open} onOpenChange={children ? () => {} : setOpen}>
             {children ? (
@@ -79,7 +78,7 @@ export default function Dropdown({
             <PopoverContentDropdown
               side="bottom"
               avoidCollisions={!!children}
-              className="nocopy nowheel nopan nodelete nodrag noundo p-0"
+              className="noflow nowheel nopan nodelete nodrag p-0"
               style={
                 children
                   ? {}

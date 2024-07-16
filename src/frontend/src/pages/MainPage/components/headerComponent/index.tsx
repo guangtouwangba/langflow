@@ -52,8 +52,7 @@ const HeaderComponent = ({
               }
             >
               <Button
-                variant="none"
-                size="none"
+                unstyled
                 onClick={handleExport}
                 disabled={disableFunctions}
               >
@@ -75,8 +74,7 @@ const HeaderComponent = ({
               }
             >
               <Button
-                variant="none"
-                size="none"
+                unstyled
                 onClick={handleDuplicate}
                 disabled={disableFunctions}
               >
@@ -98,8 +96,7 @@ const HeaderComponent = ({
               }
             >
               <Button
-                variant="none"
-                size="none"
+                unstyled
                 onClick={handleDelete}
                 disabled={disableFunctions}
               >

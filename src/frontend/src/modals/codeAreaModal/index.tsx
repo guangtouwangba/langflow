@@ -102,9 +102,9 @@ export default function CodeAreaModal({
   function processDynamicField() {
     postCustomComponent(code, nodeClass!)
       .then((apiReturn) => {
-        const { data } = apiReturn;
-        if (data) {
-          setNodeClass(data, code);
+        const { data, type } = apiReturn.data;
+        if (data && type) {
+          setNodeClass(data, code, type);
           setError({ detail: { error: undefined, traceback: undefined } });
           setOpen(false);
         }
@@ -153,7 +153,7 @@ export default function CodeAreaModal({
         <span className="pr-2"> {EDIT_CODE_TITLE} </span>
         <IconComponent
           name="prompts"
-          className="h-6 w-6 pl-1 text-primary "
+          className="h-6 w-6 pl-1 text-primary"
           aria-hidden="true"
         />
       </BaseModal.Header>
@@ -191,11 +191,9 @@ export default function CodeAreaModal({
               (error?.detail?.error !== undefined ? "h-2/6" : "h-0")
             }
           >
-            <div className="mt-1 h-full max-h-[10rem] w-full overflow-y-auto overflow-x-clip text-left custom-scroll">
-              <h1 className="text-lg text-destructive">
-                {error?.detail?.error}
-              </h1>
-              <div className="ml-2 w-full text-sm text-status-red word-break-break-word">
+            <div className="mt-5 h-full max-h-[10rem] w-full overflow-y-auto overflow-x-clip text-left custom-scroll">
+              <h1 className="text-lg text-error">{error?.detail?.error}</h1>
+              <div className="ml-2 mt-2 w-full text-sm text-destructive word-break-break-word">
                 <span className="w-full word-break-break-word">
                   {error?.detail?.traceback}
                 </span>

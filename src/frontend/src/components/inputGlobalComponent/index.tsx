@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Controller } from "react-hook-form";
 import { deleteGlobalVariable } from "../../controllers/API";
 import DeleteConfirmationModal from "../../modals/deleteConfirmationModal";
 import useAlertStore from "../../stores/alertStore";
@@ -13,7 +14,6 @@ import { CommandItem } from "../ui/command";
 export default function InputGlobalComponent({
   disabled,
   onChange,
-  setDb,
   name,
   data,
   editNode = false,
@@ -23,38 +23,17 @@ export default function InputGlobalComponent({
   );
 
   const getVariableId = useGlobalVariablesStore((state) => state.getVariableId);
-  const unavaliableFields = useGlobalVariablesStore(
-    (state) => state.unavaliableFields,
-  );
   const removeGlobalVariable = useGlobalVariablesStore(
     (state) => state.removeGlobalVariable,
   );
   const setErrorData = useAlertStore((state) => state.setErrorData);
 
   useEffect(() => {
-    if (data)
-      if (
-        globalVariablesEntries &&
-        !globalVariablesEntries.includes(data.value) &&
-        data.load_from_db
-      ) {
-        setTimeout(() => {
-          onChange("", true);
-          setDb(false);
-        }, 100);
+    if (data && globalVariablesEntries)
+      if (data.load_from_db && !globalVariablesEntries.includes(data.value)) {
+        onChange("", false, true);
       }
   }, [globalVariablesEntries]);
-
-  useEffect(() => {
-    if (!data.value && data.display_name) {
-      if (unavaliableFields[data.display_name!] && !disabled) {
-        setTimeout(() => {
-          setDb(true);
-          onChange(unavaliableFields[data.display_name!]);
-        }, 100);
-      }
-    }
-  }, [unavaliableFields]);
 
   async function handleDelete(key: string) {
     const id = getVariableId(key);
@@ -63,8 +42,7 @@ export default function InputGlobalComponent({
         .then(() => {
           removeGlobalVariable(key);
           if (data?.value === key && data?.load_from_db) {
-            onChange("");
-            setDb(false);
+            onChange("", false);
           }
         })
         .catch(() => {
@@ -136,12 +114,10 @@ export default function InputGlobalComponent({
           : ""
       }
       setSelectedOption={(value) => {
-        onChange(value);
-        setDb(value !== "" ? true : false);
+        onChange(value, value !== "" ? true : false);
       }}
       onChange={(value, skipSnapshot) => {
-        onChange(value, skipSnapshot);
-        setDb(false);
+        onChange(value, false, skipSnapshot);
       }}
     />
   );

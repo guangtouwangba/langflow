@@ -31,6 +31,7 @@ import {
   updateFlowPosition,
 } from "../../../../utils/reactflowUtils";
 import { classNames, cn, isThereModal } from "../../../../utils/utils";
+import isWrappedWithClass from "../PageComponent/utils/is-wrapped-with-class";
 import ToolbarSelectItem from "./toolbarSelectItem";
 
 export default function NodeToolbarComponent({
@@ -38,12 +39,13 @@ export default function NodeToolbarComponent({
   deleteNode,
   setShowNode,
   numberOfHandles,
+  numberOfOutputHandles,
   showNode,
   name = "code",
-  selected,
   setShowState,
   onCloseAdvancedModal,
   updateNode,
+  isOutdated,
 }: nodeToolbarPropsType): JSX.Element {
   const version = useDarkStore((state) => state.version);
   const [showModalAdvanced, setShowModalAdvanced] = useState(false);
@@ -76,6 +78,7 @@ export default function NodeToolbarComponent({
   const shortcuts = useShortcutsStore((state) => state.shortcuts);
   const unselectAll = useFlowStore((state) => state.unselectAll);
   function handleMinimizeWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow")) return;
     e.preventDefault();
     if (isMinimal) {
       setShowState((show) => !show);
@@ -84,19 +87,13 @@ export default function NodeToolbarComponent({
     }
     setNoticeData({
       title:
-        "Minimization are only available for nodes with one handle or fewer.",
+        "Minimization are only available for components with one handle or fewer.",
     });
     return;
   }
 
-  function handleUpdateWShortcut(e: KeyboardEvent) {
-    e.preventDefault();
-    if (hasApiKey || hasStore) {
-      handleSelectChange("update");
-    }
-  }
-
   function handleGroupWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow")) return;
     e.preventDefault();
     if (isGroup) {
       handleSelectChange("ungroup");
@@ -104,31 +101,29 @@ export default function NodeToolbarComponent({
   }
 
   function handleShareWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow") && !showconfirmShare) return;
     e.preventDefault();
-    if (isThereModal() && !showOverrideModal) return;
     if (hasApiKey || hasStore) {
       setShowconfirmShare((state) => !state);
     }
   }
 
   function handleCodeWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow") && !openModal) return;
     e.preventDefault();
-    if (isThereModal() && !openModal) return;
     if (hasCode) return setOpenModal((state) => !state);
     setNoticeData({ title: `You can not access ${data.id} code` });
   }
 
   function handleAdvancedWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow") && !showModalAdvanced) return;
     e.preventDefault();
-    if (isThereModal() && !showModalAdvanced) return;
-    if (!isGroup) {
-      setShowModalAdvanced((state) => !state);
-    }
+    setShowModalAdvanced((state) => !state);
   }
 
   function handleSaveWShortcut(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow") && !showOverrideModal) return;
     e.preventDefault();
-    if (isThereModal() && !showOverrideModal) return;
     if (isSaved) {
       setShowOverrideModal((state) => !state);
       return;
@@ -156,7 +151,9 @@ export default function NodeToolbarComponent({
   }
 
   function handleFreeze(e: KeyboardEvent) {
+    if (isWrappedWithClass(e, "noflow")) return;
     e.preventDefault();
+    if (data.node?.flow) return;
     setNode(data.id, (old) => ({
       ...old,
       data: {
@@ -187,9 +184,9 @@ export default function NodeToolbarComponent({
   useHotkeys(save, handleSaveWShortcut, { preventDefault });
   useHotkeys(docs, handleDocsWShortcut, { preventDefault });
   useHotkeys(download, handleDownloadWShortcut, { preventDefault });
-  useHotkeys(freeze, handleFreeze, { preventDefault });
+  useHotkeys(freeze, handleFreeze);
 
-  const isMinimal = numberOfHandles <= 1;
+  const isMinimal = numberOfHandles <= 1 && numberOfOutputHandles <= 1;
   const isGroup = data.node?.flow ? true : false;
 
   const frozen = data.node?.frozen ?? false;
@@ -247,6 +244,7 @@ export default function NodeToolbarComponent({
         saveComponent(cloneDeep(data), false);
         break;
       case "freeze":
+        if (data.node?.flow) return;
         setNode(data.id, (old) => ({
           ...old,
           data: {
@@ -295,6 +293,7 @@ export default function NodeToolbarComponent({
           edges,
           setNodes,
           setEdges,
+          data.node?.outputs,
         );
         break;
       case "override":
@@ -391,7 +390,11 @@ export default function NodeToolbarComponent({
     });
   };
 
-  const handleNodeClass = (newNodeClass: APIClassType, code?: string): void => {
+  const handleNodeClass = (
+    newNodeClass: APIClassType,
+    code?: string,
+    type?: string,
+  ): void => {
     if (!data.node) return;
     if (data.node!.template[name].value !== code) {
       takeSnapshot();
@@ -407,6 +410,10 @@ export default function NodeToolbarComponent({
         display_name: newNodeClass.display_name ?? data.node!.display_name,
       };
 
+      if (type) {
+        newNode.data.type = type;
+      }
+
       newNode.data.node.template[name].value = code;
 
       return newNode;
@@ -420,7 +427,7 @@ export default function NodeToolbarComponent({
 
   return (
     <>
-      <div className="w-26 nocopy nowheel nopan nodelete nodrag noundo h-10">
+      <div className="w-26 noflow nowheel nopan nodelete nodrag h-10">
         <span className="isolate inline-flex rounded-md shadow-sm">
           {hasCode && (
             <ShadTooltip
@@ -454,7 +461,7 @@ export default function NodeToolbarComponent({
               <button
                 className={`${
                   isGroup ? "rounded-l-md" : ""
-                } relative -ml-px inline-flex items-center bg-background px-2 py-2 text-foreground shadow-md ring-1 ring-inset ring-ring  transition-all duration-500 ease-in-out hover:bg-muted focus:z-10`}
+                } relative -ml-px inline-flex items-center bg-background px-2 py-2 text-foreground shadow-md ring-1 ring-inset ring-ring transition-all duration-500 ease-in-out hover:bg-muted focus:z-10`}
                 onClick={() => {
                   setShowModalAdvanced(true);
                 }}
@@ -483,42 +490,44 @@ export default function NodeToolbarComponent({
               <IconComponent name="SaveAll" className="h-4 w-4" />
             </button>
           </ShadTooltip>*/}
-          <ShadTooltip
-            content={displayShortcut(
-              shortcuts.find(
-                ({ name }) => name.split(" ")[0].toLowerCase() === "freeze",
-              )!,
-            )}
-            side="top"
-          >
-            <button
-              className={classNames(
-                "relative -ml-px inline-flex items-center bg-background px-2 py-2 text-foreground shadow-md ring-1 ring-inset ring-ring  transition-all duration-500 ease-in-out hover:bg-muted focus:z-10",
+          {!data.node?.flow && (
+            <ShadTooltip
+              content={displayShortcut(
+                shortcuts.find(
+                  ({ name }) => name.split(" ")[0].toLowerCase() === "freeze",
+                )!,
               )}
-              onClick={(event) => {
-                event.preventDefault();
-                setNode(data.id, (old) => ({
-                  ...old,
-                  data: {
-                    ...old.data,
-                    node: {
-                      ...old.data.node,
-                      frozen: old.data?.node?.frozen ? false : true,
-                    },
-                  },
-                }));
-              }}
+              side="top"
             >
-              <IconComponent
-                name="Snowflake"
-                className={cn(
-                  "h-4 w-4 transition-all",
-                  // TODO UPDATE THIS COLOR TO BE A VARIABLE
-                  frozen ? "animate-wiggle text-ice" : "",
+              <button
+                className={classNames(
+                  "relative -ml-px inline-flex items-center bg-background px-2 py-2 text-foreground shadow-md ring-1 ring-inset ring-ring transition-all duration-500 ease-in-out hover:bg-muted focus:z-10",
                 )}
-              />
-            </button>
-          </ShadTooltip>
+                onClick={(event) => {
+                  event.preventDefault();
+                  setNode(data.id, (old) => ({
+                    ...old,
+                    data: {
+                      ...old.data,
+                      node: {
+                        ...old.data.node,
+                        frozen: old.data?.node?.frozen ? false : true,
+                      },
+                    },
+                  }));
+                }}
+              >
+                <IconComponent
+                  name="Snowflake"
+                  className={cn(
+                    "h-4 w-4 transition-all",
+                    // TODO UPDATE THIS COLOR TO BE A VARIABLE
+                    frozen ? "animate-wiggle text-ice" : "",
+                  )}
+                />
+              </button>
+            </ShadTooltip>
+          )}
 
           {/*<ShadTooltip content={"Duplicate"} side="top">
             <button
@@ -542,7 +551,7 @@ export default function NodeToolbarComponent({
                   <div
                     data-testid="more-options-modal"
                     className={classNames(
-                      "relative -ml-px inline-flex h-8 w-[31px] items-center rounded-r-md bg-background text-foreground  shadow-md ring-1 ring-inset  ring-ring transition-all duration-500 ease-in-out hover:bg-muted focus:z-10",
+                      "relative -ml-px inline-flex h-8 w-[31px] items-center rounded-r-md bg-background text-foreground shadow-md ring-1 ring-inset ring-ring transition-all duration-500 ease-in-out hover:bg-muted focus:z-10",
                     )}
                   >
                     <IconComponent
@@ -609,6 +618,18 @@ export default function NodeToolbarComponent({
                   dataTestId="copy-button-modal"
                 />
               </SelectItem>
+              {isOutdated && (
+                <SelectItem value={"update"}>
+                  <ToolbarSelectItem
+                    shortcut={
+                      shortcuts.find((obj) => obj.name === "Update")?.shortcut!
+                    }
+                    value={"Restore"}
+                    icon={"RefreshCcwDot"}
+                    dataTestId="update-button-modal"
+                  />
+                </SelectItem>
+              )}
               {hasStore && (
                 <SelectItem
                   value={"Share"}
@@ -676,30 +697,29 @@ export default function NodeToolbarComponent({
                   />
                 </SelectItem>
               )}
-              <SelectItem value="freeze">
-                <ToolbarSelectItem
-                  shortcut={
-                    shortcuts.find((obj) => obj.name === "Freeze")?.shortcut!
-                  }
-                  value={"Freeze"}
-                  icon={"Snowflake"}
-                  dataTestId="group-button-modal"
-                  style={`${frozen ? " text-ice" : ""} transition-all`}
-                />
-              </SelectItem>
-              {(!hasStore || !hasApiKey || !validApiKey) && (
-                <SelectItem value="Download">
+              {!data.node?.flow && (
+                <SelectItem value="freeze">
                   <ToolbarSelectItem
                     shortcut={
-                      shortcuts.find((obj) => obj.name === "Download")
-                        ?.shortcut!
+                      shortcuts.find((obj) => obj.name === "Freeze")?.shortcut!
                     }
-                    value={"Download"}
-                    icon={"Download"}
-                    dataTestId="download-button-modal"
+                    value={"Freeze"}
+                    icon={"Snowflake"}
+                    dataTestId="group-button-modal"
+                    style={`${frozen ? " text-ice" : ""} transition-all`}
                   />
                 </SelectItem>
               )}
+              <SelectItem value="Download">
+                <ToolbarSelectItem
+                  shortcut={
+                    shortcuts.find((obj) => obj.name === "Download")?.shortcut!
+                  }
+                  value={"Download"}
+                  icon={"Download"}
+                  dataTestId="download-button-modal"
+                />
+              </SelectItem>
               <SelectItem
                 value={"delete"}
                 className="focus:bg-red-400/[.20]"
@@ -709,11 +729,11 @@ export default function NodeToolbarComponent({
                 <div className="font-red flex text-status-red">
                   <IconComponent
                     name="Trash2"
-                    className="relative top-0.5 mr-2 h-4 w-4 "
+                    className="relative top-0.5 mr-2 h-4 w-4"
                   />{" "}
                   <span className="">Delete</span>{" "}
                   <span
-                    className={` absolute right-2 top-2 flex items-center justify-center rounded-sm px-1 py-[0.2] ${
+                    className={`absolute right-2 top-2 flex items-center justify-center rounded-sm px-1 py-[0.2] ${
                       deleteIsFocus ? " " : "bg-muted"
                     }`}
                   >
@@ -742,7 +762,7 @@ export default function NodeToolbarComponent({
             onClose={setShowOverrideModal}
             onCancel={() => {
               saveComponent(cloneDeep(data), false);
-              setSuccessData({ title: "New node successfully saved!" });
+              setSuccessData({ title: "New component successfully saved!" });
             }}
           >
             <ConfirmationModal.Content>

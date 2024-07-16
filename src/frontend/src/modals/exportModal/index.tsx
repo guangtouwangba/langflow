@@ -42,6 +42,7 @@ const ExportModal = forwardRef(
                 description,
                 name,
                 last_tested_version: version,
+                endpoint_name: currentFlow!.endpoint_name,
                 is_component: false,
               },
               name!,
@@ -58,6 +59,7 @@ const ExportModal = forwardRef(
                 description,
                 name,
                 last_tested_version: version,
+                endpoint_name: currentFlow!.endpoint_name,
                 is_component: false,
               }),
               name!,
@@ -90,11 +92,11 @@ const ExportModal = forwardRef(
                 setChecked(event);
               }}
             />
-            <label htmlFor="terms" className="export-modal-save-api text-sm ">
+            <label htmlFor="terms" className="export-modal-save-api text-sm">
               {SAVE_WITH_API_CHECKBOX}
             </label>
           </div>
-          <span className="mt-1 text-xs text-destructive ">
+          <span className="mt-1 text-xs text-destructive">
             {ALERT_SAVE_WITH_API}
           </span>
         </BaseModal.Content>

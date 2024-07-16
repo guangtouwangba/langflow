@@ -68,7 +68,7 @@ const Header: React.FC<{
 }> = ({ children, description }: modalHeaderType): JSX.Element => {
   return (
     <DialogHeader>
-      <DialogTitle className="line-clamp-1 flex items-center">
+      <DialogTitle className="line-clamp-1 flex items-center pb-0.5">
         {children}
       </DialogTitle>
       <DialogDescription className="line-clamp-2">
@@ -105,6 +105,7 @@ const Footer: React.FC<{
               type={submit.onClick ? "button" : "submit"}
               onClick={submit.onClick}
               loading={submit.loading}
+              disabled={submit.disabled}
             >
               {submit.icon && submit.icon}
               {submit.label}

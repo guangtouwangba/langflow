@@ -1,13 +1,13 @@
 from typing import Optional, Union
 
 from langflow.base.data.utils import IMG_FILE_TYPES, TEXT_FILE_TYPES
-from langflow.custom import CustomComponent
+from langflow.custom import Component
 from langflow.memory import store_message
-from langflow.schema import Record
+from langflow.schema import Data
 from langflow.schema.message import Message
 
 
-class ChatComponent(CustomComponent):
+class ChatComponent(Component):
     display_name = "Chat Component"
     description = "Use as base for chat components."
 
@@ -34,10 +34,10 @@ class ChatComponent(CustomComponent):
                 "info": "Return the message as a Message containing the sender, sender_name, and session_id.",
                 "advanced": True,
             },
-            "record_template": {
-                "display_name": "Record Template",
+            "data_template": {
+                "display_name": "Data Template",
                 "multiline": True,
-                "info": "In case of Message being a Record, this template will be used to convert it to text.",
+                "info": "In case of Message being a Data, this template will be used to convert it to text.",
                 "advanced": True,
             },
             "files": {
@@ -49,6 +49,7 @@ class ChatComponent(CustomComponent):
             },
         }
 
+    # Keep this method for backward compatibility
     def store_message(
         self,
         message: Message,
@@ -61,20 +62,20 @@ class ChatComponent(CustomComponent):
         self.status = messages
         return messages
 
-    def build_with_record(
+    def build_with_data(
         self,
         sender: Optional[str] = "User",
         sender_name: Optional[str] = "User",
-        input_value: Optional[Union[str, Record, Message]] = None,
+        input_value: Optional[Union[str, Data, Message]] = None,
         files: Optional[list[str]] = None,
         session_id: Optional[str] = None,
         return_message: Optional[bool] = False,
     ) -> Message:
         message: Message | None = None
 
-        if isinstance(input_value, Record):
+        if isinstance(input_value, Data):
             # Update the data of the record
-            message = Message.from_record(input_value)
+            message = Message.from_data(input_value)
         else:
             message = Message(
                 text=input_value, sender=sender, sender_name=sender_name, files=files, session_id=session_id
@@ -82,9 +83,13 @@ class ChatComponent(CustomComponent):
         if not return_message:
             message_text = message.text
         else:
-            message_text = message
+            message_text = message  # type: ignore
 
         self.status = message_text
         if session_id and isinstance(message, Message) and isinstance(message.text, str):
-            self.store_message(message)
-        return message_text
+            messages = store_message(
+                message,
+                flow_id=self.graph.flow_id,
+            )
+            self.status = messages
+        return message_text  # type: ignore

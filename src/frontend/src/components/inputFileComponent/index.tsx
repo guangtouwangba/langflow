@@ -1,3 +1,4 @@
+import { usePostUploadFile } from "@/controllers/API/queries/files/use-post-upload-file";
 import { useEffect, useState } from "react";
 import {
   CONSOLE_ERROR_MSG,
@@ -8,6 +9,7 @@ import useAlertStore from "../../stores/alertStore";
 import useFlowsManagerStore from "../../stores/flowsManagerStore";
 import { FileComponentType } from "../../types/components";
 import IconComponent from "../genericIconComponent";
+import { Button } from "../ui/button";
 
 export default function InputFileComponent({
   value,
@@ -26,7 +28,7 @@ export default function InputFileComponent({
   useEffect(() => {
     if (disabled && value !== "") {
       setMyValue("");
-      onChange("", true);
+      onChange("", undefined, true);
       onFileChange("");
     }
   }, [disabled, onChange]);
@@ -45,6 +47,8 @@ export default function InputFileComponent({
     setMyValue(value);
   }, [value]);
 
+  const { mutate } = usePostUploadFile();
+
   const handleButtonClick = (): void => {
     // Create a file input element
     const input = document.createElement("input");
@@ -62,24 +66,27 @@ export default function InputFileComponent({
       // Check if the file type is correct
       if (file && checkFileType(file.name)) {
         // Upload the file
-        uploadFile(file, currentFlowId)
-          .then((res) => res.data)
-          .then((data) => {
-            // Get the file name from the response
-            const { file_path } = data;
+        mutate(
+          { file, id: currentFlowId },
+          {
+            onSuccess: (data) => {
+              // Get the file name from the response
+              const { file_path } = data;
 
-            // sets the value that goes to the backend
-            onFileChange(file_path);
-            // Update the state and callback with the name of the file
-            // sets the value to the user
-            setMyValue(file.name);
-            onChange(file.name);
-            setLoading(false);
-          })
-          .catch(() => {
-            console.error(CONSOLE_ERROR_MSG);
-            setLoading(false);
-          });
+              // sets the value that goes to the backend
+              onFileChange(file_path);
+              // Update the state and on with the name of the file
+              // sets the value to the user
+              setMyValue(file.name);
+              onChange(file.name);
+              setLoading(false);
+            },
+            onError: () => {
+              console.error(CONSOLE_ERROR_MSG);
+              setLoading(false);
+            },
+          },
+        );
       } else {
         // Show an error if the file type is not allowed
         setErrorData({
@@ -98,7 +105,7 @@ export default function InputFileComponent({
 
   return (
     <div className={disabled ? "input-component-div" : "w-full"}>
-      <div className="input-file-component">
+      <div className="input-file-component gap-3">
         <span
           onClick={handleButtonClick}
           className={
@@ -111,20 +118,20 @@ export default function InputFileComponent({
         >
           {myValue !== "" ? myValue : "No file"}
         </span>
-        <button onClick={handleButtonClick}>
-          {!editNode && !loading && (
+        {!editNode && (
+          <Button
+            unstyled
+            className="inline-flex items-center justify-center"
+            onClick={handleButtonClick}
+            loading={loading}
+            disabled={disabled}
+          >
             <IconComponent
               name="FileSearch2"
-              className={
-                "icons-parameters-comp" +
-                (disabled ? " text-ring " : " hover:text-accent-foreground")
-              }
+              className="icons-parameters-comp shrink-0"
             />
-          )}
-          {!editNode && loading && (
-            <span className="loading loading-spinner loading-sm pointer-events-none h-8 pl-3"></span>
-          )}
-        </button>
+          </Button>
+        )}
       </div>
     </div>
   );

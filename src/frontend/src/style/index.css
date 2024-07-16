@@ -32,6 +32,7 @@
 
     --error-background: #fef2f2;
     --error-foreground: #991b1b;
+    --error: #991b1b;
 
     --success-background: #f0fdf4;
     --success-foreground: #14532d;
@@ -45,6 +46,7 @@
 
     --beta-background: rgb(219 234 254);
     --beta-foreground: rgb(37 99 235);
+    --beta-foreground-soft: rgb(37 99 235 / 80%);
 
     --chat-bot-icon: #afe6ef;
     --chat-user-icon: #aface9;
@@ -111,6 +113,7 @@
 
     --error-foreground: #fef2f2;
     --error-background: #450a0a;
+    --error: #991b1b;
 
     --info-foreground: #eff6ff;
     --info-background: #172554;
@@ -136,6 +139,7 @@
 
     --beta-background: rgb(37 99 235);
     --beta-foreground: rgb(219 234 254);
+    --beta-foreground-soft: rgb(219 234 254);
 
     --chat-bot-icon: #235d70;
     --chat-user-icon: #4f3d6e;

@@ -4,6 +4,7 @@ import "ace-builds/src-noconflict/mode-python";
 import "ace-builds/src-noconflict/theme-github";
 import "ace-builds/src-noconflict/theme-twilight";
 // import "ace-builds/webpack-resolver";
+import { cloneDeep } from "lodash";
 import { useEffect, useState } from "react";
 import JsonView from "react18-json-view";
 import "react18-json-view/src/dark.css";
@@ -12,16 +13,17 @@ import IconComponent from "../../components/genericIconComponent";
 import { CODE_DICT_DIALOG_SUBTITLE } from "../../constants/constants";
 import { useDarkStore } from "../../stores/darkStore";
 import BaseModal from "../baseModal";
-import { cloneDeep } from "lodash";
 
 export default function DictAreaModal({
   children,
   onChange,
   value,
+  disabled = false,
 }: {
   children: JSX.Element;
   onChange?: (value: Object) => void;
   value: Object;
+  disabled?: boolean;
 }): JSX.Element {
   const [open, setOpen] = useState(false);
   const isDark = useDarkStore((state) => state.dark);
@@ -35,6 +37,7 @@ export default function DictAreaModal({
     <BaseModal
       size="medium-h-full"
       open={open}
+      disable={disabled}
       setOpen={setOpen}
       onSubmit={
         onChange
@@ -54,12 +57,12 @@ export default function DictAreaModal({
         </span>
         <IconComponent
           name="BookMarked"
-          className="h-6 w-6 pl-1 text-primary "
+          className="h-6 w-6 pl-1 text-primary"
           aria-hidden="true"
         />
       </BaseModal.Header>
       <BaseModal.Content>
-        <div className="flex h-full w-full flex-col transition-all ">
+        <div className="flex h-full w-full flex-col transition-all">
           <JsonView
             theme="vscode"
             dark={isDark}
@@ -70,6 +73,9 @@ export default function DictAreaModal({
               setMyValue(edit.src);
             }}
             src={cloneDeep(myValue)}
+            customizeCopy={(copy) => {
+              navigator.clipboard.writeText(JSON.stringify(copy));
+            }}
           />
         </div>
       </BaseModal.Content>

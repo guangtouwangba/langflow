@@ -24,7 +24,6 @@ export default function InputComponent({
   blurOnEnter = false,
   optionsIcon = "ChevronsUpDown",
   selectedOption,
-
   setSelectedOption,
   selectedOptions = [],
   setSelectedOptions,
@@ -67,9 +66,9 @@ export default function InputComponent({
             required={required}
             className={classNames(
               password && !pwdVisible && value !== ""
-                ? " text-clip password "
+                ? "text-clip password"
                 : "",
-              editNode ? " input-edit-node " : "",
+              editNode ? "input-edit-node" : "",
               password && editNode ? "pr-8" : "",
               password && !editNode ? "pr-10" : "",
               className!,

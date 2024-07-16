@@ -26,7 +26,7 @@ test.describe("drag and drop test", () => {
     await page.locator("span").filter({ hasText: "My Collection" }).isVisible();
     // Read your file into a buffer.
     const jsonContent = readFileSync(
-      "src/frontend/tests/end-to-end/assets/collection.json",
+      "tests/end-to-end/assets/collection.json",
       "utf-8",
     );
 
@@ -50,8 +50,8 @@ test.describe("drag and drop test", () => {
       },
     );
 
-    const genericNoda = page.getByTestId("div-generic-node");
-    const elementCount = await genericNoda?.count();
+    const genericNode = page.getByTestId("div-generic-node");
+    const elementCount = await genericNode?.count();
     if (elementCount > 0) {
       expect(true).toBeTruthy();
     }

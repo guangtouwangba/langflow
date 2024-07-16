@@ -93,9 +93,9 @@ const CustomInputPopover = ({
               (!setSelectedOption || selectedOption === "") &&
               !pwdVisible &&
               value !== ""
-              ? " text-clip password "
+              ? "text-clip password"
               : "",
-            editNode ? " input-edit-node " : "",
+            editNode ? "input-edit-node" : "",
             password && (setSelectedOption || setSelectedOptions)
               ? "pr-[62.9px]"
               : "",
@@ -115,7 +115,7 @@ const CustomInputPopover = ({
         />
       </PopoverAnchor>
       <PopoverContentInput
-        className="nocopy nowheel nopan nodelete nodrag noundo p-0"
+        className="noflow nowheel nopan nodelete nodrag p-0"
         style={{ minWidth: refInput?.current?.clientWidth ?? "200px" }}
         side="bottom"
         align="center"

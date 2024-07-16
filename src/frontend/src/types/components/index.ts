@@ -1,7 +1,12 @@
 import { ReactElement, ReactNode, SetStateAction } from "react";
 import { ReactFlowJsonObject } from "reactflow";
 import { InputOutput } from "../../constants/enums";
-import { APIClassType, APITemplateType, TemplateVariableType } from "../api";
+import {
+  APIClassType,
+  APITemplateType,
+  InputFieldType,
+  OutputFieldProxyType,
+} from "../api";
 import { ChatMessageType } from "../chat";
 import { FlowStyleType, FlowType, NodeDataType, NodeType } from "../flow/index";
 import { sourceHandleType, targetHandleType } from "./../flow/index";
@@ -54,11 +59,13 @@ export type DropDownComponentType = {
   children?: ReactNode;
 };
 export type ParameterComponentType = {
-  selected: boolean;
+  selected?: boolean;
   data: NodeDataType;
   title: string;
+  conditionPath?: string | null;
+  key: string;
   id: sourceHandleType | targetHandleType;
-  color: string;
+  colors: string[];
   left: boolean;
   type: string | undefined;
   required?: boolean;
@@ -68,8 +75,10 @@ export type ParameterComponentType = {
   info?: string;
   proxy?: { field: string; id: string };
   showNode?: boolean;
-  index?: string;
+  index: number;
   onCloseModal?: (close: boolean) => void;
+  outputName?: string;
+  outputProxy?: OutputFieldProxyType;
 };
 export type InputListComponentType = {
   value: string[];
@@ -82,10 +91,9 @@ export type InputListComponentType = {
 
 export type InputGlobalComponentType = {
   disabled: boolean;
-  onChange: (value: string, snapshot?: boolean) => void;
-  setDb: (value: boolean) => void;
+  onChange: (value: string, dbValue: boolean, snapshot?: boolean) => void;
   name: string;
-  data: TemplateVariableType;
+  data: InputFieldType;
   editNode?: boolean;
   playgroundDisabled?: boolean;
 };
@@ -115,11 +123,25 @@ export type TextAreaComponentType = {
   nodeClass?: APIClassType;
   setNodeClass?: (value: APIClassType) => void;
   disabled: boolean;
-  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
+  onChange: (
+    value: string[] | string,
+    dbValue?: boolean,
+    skipSnapshot?: boolean,
+  ) => void;
   value: string;
   editNode?: boolean;
   id?: string;
   readonly?: boolean;
+};
+
+export type outputComponentType = {
+  types: string[];
+  selected: string;
+  nodeId: string;
+  frozen?: boolean;
+  idx: number;
+  name: string;
+  proxy?: OutputFieldProxyType;
 };
 
 export type PromptAreaComponentType = {
@@ -127,7 +149,11 @@ export type PromptAreaComponentType = {
   nodeClass?: APIClassType;
   setNodeClass?: (value: APIClassType, code?: string) => void;
   disabled: boolean;
-  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
+  onChange: (
+    value: string[] | string,
+    dbValue?: boolean,
+    skipSnapshot?: boolean,
+  ) => void;
   value: string;
   readonly?: boolean;
   editNode?: boolean;
@@ -137,7 +163,11 @@ export type PromptAreaComponentType = {
 export type CodeAreaComponentType = {
   setOpenModal?: (bool: boolean) => void;
   disabled: boolean;
-  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
+  onChange: (
+    value: string[] | string,
+    dbValue?: boolean,
+    skipSnapshot?: boolean,
+  ) => void;
   value: string;
   editNode?: boolean;
   nodeClass?: APIClassType;
@@ -152,7 +182,11 @@ export type CodeAreaComponentType = {
 export type FileComponentType = {
   IOInputProps?;
   disabled: boolean;
-  onChange: (value: string[] | string, skipSnapshot?: boolean) => void;
+  onChange: (
+    value: string[] | string,
+    dbValue?: boolean,
+    skipSnapshot?: boolean,
+  ) => void;
   value: string;
   fileTypes: Array<string>;
   onFileChange: (value: string) => void;
@@ -161,7 +195,7 @@ export type FileComponentType = {
 
 export type DisclosureComponentType = {
   children: ReactNode;
-  openDisc: boolean;
+  defaultOpen: boolean;
   isChild?: boolean;
   button: {
     title: string;
@@ -185,7 +219,7 @@ export type IntComponentType = {
   value: string;
   disabled?: boolean;
   rangeSpec: RangeSpecType;
-  onChange: (value: string, skipSnapshot?: boolean) => void;
+  onChange: (value: string, dbValue?: boolean, skipSnapshot?: boolean) => void;
   editNode?: boolean;
   id?: string;
 };
@@ -193,7 +227,7 @@ export type IntComponentType = {
 export type FloatComponentType = {
   value: string;
   disabled?: boolean;
-  onChange: (value: string, skipSnapshot?: boolean) => void;
+  onChange: (value: string, dbValue?: boolean, skipSnapshot?: boolean) => void;
   rangeSpec: RangeSpecType;
   editNode?: boolean;
   id?: string;
@@ -229,11 +263,6 @@ export type ProgressBarType = {
   children?: ReactElement;
   value?: number;
   max?: number;
-};
-
-export type RadialProgressType = {
-  value?: number;
-  color?: string;
 };
 
 export type AccordionComponentType = {
@@ -289,7 +318,7 @@ export type IconComponentProps = {
 export type InputProps = {
   name: string | null;
   description: string | null;
-  endpointName?: string;
+  endpointName?: string | null;
   maxLength?: number;
   setName?: (name: string) => void;
   setDescription?: (description: string) => void;
@@ -465,6 +494,7 @@ export type nodeToolbarType = {
       description: string;
       display_name: string;
       documentation: string;
+      edited: boolean;
       template: APITemplateType;
     };
     value: void;
@@ -542,11 +572,12 @@ export type nodeToolbarPropsType = {
   deleteNode: (idx: string) => void;
   setShowNode: (boolean: any) => void;
   numberOfHandles: number;
+  numberOfOutputHandles: number;
   showNode: boolean;
   name?: string;
   openAdvancedModal?: boolean;
   onCloseAdvancedModal?: (close: boolean) => void;
-  selected: boolean;
+  isOutdated: boolean;
   setShowState: (show: boolean | SetStateAction<boolean>) => void;
   updateNode: () => void;
 };
@@ -579,7 +610,11 @@ export type codeAreaModalPropsType = {
   setOpenModal?: (bool: boolean) => void;
   value: string;
   nodeClass: APIClassType | undefined;
-  setNodeClass: (Class: APIClassType, code?: string) => void | undefined;
+  setNodeClass: (
+    Class: APIClassType,
+    code?: string,
+    type?: string,
+  ) => void | undefined;
   children: ReactNode;
   dynamic?: boolean;
   readonly?: boolean;
@@ -606,6 +641,7 @@ export type genericModalPropsType = {
   buttonText: string;
   modalTitle: string;
   type: number;
+  disabled?: boolean;
   nodeClass?: APIClassType;
   setNodeClass?: (Class: APIClassType, code?: string) => void;
   children: ReactNode;
@@ -674,6 +710,8 @@ type codeTabsFuncTempType = {
 };
 
 export type codeTabsPropsType = {
+  isThereTweaks?: boolean;
+  isThereWH?: boolean;
   flow?: FlowType;
   tabs: Array<tabsArrayType>;
   activeTab: string;
@@ -686,13 +724,13 @@ export type codeTabsPropsType = {
     getValue?: (
       value: string,
       node: NodeType,
-      template: TemplateVariableType,
+      template: InputFieldType,
       tweak: tweakType,
     ) => string;
     buildTweakObject?: (
       tw: string,
       changes: string | string[] | boolean | number | Object[] | Object,
-      template: TemplateVariableType,
+      template: InputFieldType,
     ) => Promise<string | void>;
   };
   activeTweaks?: boolean;
@@ -715,7 +753,7 @@ export type Log = {
 export type validationStatusType = {
   id: string;
   data: object | any;
-  logs: Log[];
+  outputs: Log[];
   progress?: number;
   valid: boolean;
   duration?: string;
@@ -769,7 +807,7 @@ export type chatViewProps = {
 };
 
 export type IOFileInputProps = {
-  field: TemplateVariableType;
+  field: InputFieldType;
   updateValue: (e: any, type: string) => void;
 };
 

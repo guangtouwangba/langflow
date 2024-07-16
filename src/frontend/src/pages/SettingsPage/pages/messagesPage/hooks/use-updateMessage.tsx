@@ -2,7 +2,10 @@ import { updateMessageApi } from "../../../../../controllers/API";
 import { useMessagesStore } from "../../../../../stores/messagesStore";
 import { Message } from "../../../../../types/messages";
 
-const useUpdateMessage = (setSuccessData, setErrorData) => {
+const useUpdateMessage = (
+  setSuccessData: (data: { title: string; list?: string[] }) => void,
+  setErrorData: (data: { title: string; list?: string[] }) => void,
+) => {
   const updateMessage = useMessagesStore((state) => state.updateMessage);
 
   const handleUpdate = async (data: Message) => {
@@ -20,6 +23,7 @@ const useUpdateMessage = (setSuccessData, setErrorData) => {
       setErrorData({
         title: "Error updating messages.",
       });
+      return Promise.reject(error);
     }
   };
 

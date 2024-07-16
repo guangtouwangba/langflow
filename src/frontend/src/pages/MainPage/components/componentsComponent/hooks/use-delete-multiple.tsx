@@ -1,19 +1,26 @@
+import { FolderType } from "@/pages/MainPage/entities";
+import { FlowType } from "@/types/flow";
 import { useCallback } from "react";
 
 const useDeleteMultipleFlows = (
-  selectedFlowsComponentsCards,
-  removeFlow,
-  resetFilter,
-  getFoldersApi,
-  folderId,
-  myCollectionId,
-  getFolderById,
-  setSuccessData,
-  setErrorData,
+  selectedFlowsComponentsCards: string[],
+  removeFlow: (selectedFlowsComponentsCards: string[]) => Promise<void>,
+  resetFilter: () => void,
+  getFoldersApi: (refetch?: boolean) => Promise<void>,
+  folderId: string | undefined,
+  myCollectionId: string,
+  getFolderById: (id: string) => void,
+  setSuccessData: (data: { title: string }) => void,
+  setErrorData: (data: { title: string; list: string[] }) => void,
+  setAllFlows: (flows: FlowType[]) => void,
+  setSelectedFolder: (folder: FolderType | null) => void,
 ) => {
   const handleDeleteMultiple = useCallback(() => {
     removeFlow(selectedFlowsComponentsCards)
       .then(() => {
+        setAllFlows([]);
+        setSelectedFolder(null);
+
         resetFilter();
         getFoldersApi(true);
         if (!folderId || folderId === myCollectionId) {

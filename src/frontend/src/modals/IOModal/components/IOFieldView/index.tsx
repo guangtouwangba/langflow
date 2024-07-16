@@ -2,12 +2,16 @@ import { cloneDeep } from "lodash";
 import { useState } from "react";
 import ImageViewer from "../../../../components/ImageViewer";
 import CsvOutputComponent from "../../../../components/csvOutputComponent";
+import DataOutputComponent from "../../../../components/dataOutputComponent";
 import InputListComponent from "../../../../components/inputListComponent";
 import PdfViewer from "../../../../components/pdfViewer";
-import RecordsOutputComponent from "../../../../components/recordsOutputComponent";
 import { Textarea } from "../../../../components/ui/textarea";
 import { PDFViewConstant } from "../../../../constants/constants";
-import { InputOutput } from "../../../../constants/enums";
+import {
+  IOInputTypes,
+  IOOutputTypes,
+  InputOutput,
+} from "../../../../constants/enums";
 import TextOutputView from "../../../../shared/components/textOutputView";
 import useFlowStore from "../../../../stores/flowStore";
 import { IOFieldViewProps } from "../../../../types/components";
@@ -47,22 +51,18 @@ export default function IOFieldView({
 
   const textOutputValue =
     (flowPool[node!.id] ?? [])[(flowPool[node!.id]?.length ?? 1) - 1]?.data
-      .results.result ?? "";
-
-  console.log(
-    (flowPool[node!.id] ?? [])[(flowPool[node!.id]?.length ?? 1) - 1]?.data,
-  );
+      .results.text ?? "";
 
   function handleOutputType() {
     if (!node) return <>"No node found!"</>;
     switch (type) {
       case InputOutput.INPUT:
         switch (fieldType) {
-          case "TextInput":
+          case IOInputTypes.TEXT:
             return (
               <Textarea
                 className={`w-full custom-scroll ${
-                  left ? " min-h-32" : " h-full"
+                  left ? "min-h-32" : "h-full"
                 }`}
                 placeholder={"Enter text..."}
                 value={node.data.node!.template["input_value"].value}
@@ -77,7 +77,7 @@ export default function IOFieldView({
                 }}
               />
             );
-          case "FileLoader":
+          case IOInputTypes.FILE_LOADER:
             return (
               <IOFileInput
                 field={node.data.node!.template["file_path"]["value"]}
@@ -91,7 +91,7 @@ export default function IOFieldView({
               />
             );
 
-          case "KeyPairInput":
+          case IOInputTypes.KEYPAIR:
             return (
               <IOKeyPairInput
                 value={node.data.node!.template["input_value"]?.value}
@@ -110,7 +110,7 @@ export default function IOFieldView({
               />
             );
 
-          case "JsonInput":
+          case IOInputTypes.JSON:
             return (
               <IoJsonInput
                 value={node.data.node!.template["input_value"]?.value}
@@ -125,7 +125,7 @@ export default function IOFieldView({
               />
             );
 
-          case "StringListInput":
+          case IOInputTypes.STRING_LIST:
             return (
               <>
                 <InputListComponent
@@ -146,7 +146,7 @@ export default function IOFieldView({
             return (
               <Textarea
                 className={`w-full custom-scroll ${
-                  left ? " min-h-32" : " h-full"
+                  left ? "min-h-32" : "h-full"
                 }`}
                 placeholder={"Enter text..."}
                 value={node.data.node!.template["input_value"]}
@@ -164,15 +164,15 @@ export default function IOFieldView({
         }
       case InputOutput.OUTPUT:
         switch (fieldType) {
-          case "TextOutput":
+          case IOOutputTypes.TEXT:
             return <TextOutputView left={left} value={textOutputValue} />;
-          case "PDFOutput":
+          case IOOutputTypes.PDF:
             return left ? (
               <div>{PDFViewConstant}</div>
             ) : (
               <PdfViewer pdf={flowPoolNode?.params ?? ""} />
             );
-          case "CSVOutput":
+          case IOOutputTypes.CSV:
             return left ? (
               <>
                 <CsvSelect
@@ -185,7 +185,7 @@ export default function IOFieldView({
                 <CsvOutputComponent csvNode={node} flowPool={flowPoolNode} />
               </>
             );
-          case "ImageOutput":
+          case IOOutputTypes.IMAGE:
             return left ? (
               <div>Expand the view to see the image</div>
             ) : (
@@ -198,7 +198,7 @@ export default function IOFieldView({
               />
             );
 
-          case "JsonOutput":
+          case IOOutputTypes.JSON:
             return (
               <IoJsonInput
                 value={node.data.node!.template["input_value"]?.value}
@@ -214,7 +214,7 @@ export default function IOFieldView({
               />
             );
 
-          case "KeyPairOutput":
+          case IOOutputTypes.KEY_PAIR:
             return (
               <IOKeyPairInput
                 value={node.data.node!.template["input_value"]?.value}
@@ -232,7 +232,7 @@ export default function IOFieldView({
               />
             );
 
-          case "StringListOutput":
+          case IOOutputTypes.STRING_LIST:
             return (
               <>
                 <InputListComponent
@@ -249,10 +249,10 @@ export default function IOFieldView({
                 />
               </>
             );
-          case "RecordsOutput":
+          case IOOutputTypes.DATA:
             return (
               <div className={left ? "h-56" : "h-full"}>
-                <RecordsOutputComponent
+                <DataOutputComponent
                   pagination={!left}
                   rows={
                     Array.isArray(flowPoolNode?.data?.artifacts)
@@ -270,7 +270,7 @@ export default function IOFieldView({
             return (
               <Textarea
                 className={`w-full custom-scroll ${
-                  left ? " min-h-32" : " h-full"
+                  left ? "min-h-32" : "h-full"
                 }`}
                 placeholder={"Empty"}
                 // update to real value on flowPool

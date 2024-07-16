@@ -5,7 +5,7 @@ import { cn } from "../../utils/utils";
 import ForwardedIconComponent from "../genericIconComponent";
 
 const buttonVariants = cva(
-  "nocopy nowheel nopan nodelete nodrag noundo inline-flex items-center gap-2 justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none  ring-offset-background",
+  "noflow nowheel nopan nodelete nodrag  inline-flex items-center gap-2 justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none  ring-offset-background",
   {
     variants: {
       variant: {
@@ -20,7 +20,6 @@ const buttonVariants = cva(
           "border border-muted bg-muted text-secondary-foreground hover:bg-secondary-foreground/5",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "underline-offset-4 hover:underline text-primary",
-        none: "",
       },
       size: {
         default: "h-10 py-2 px-4",
@@ -28,7 +27,6 @@ const buttonVariants = cva(
         xs: "py-0.5 px-3 rounded-md",
         lg: "h-11 px-8 rounded-md",
         icon: "py-1 px-1 rounded-md",
-        none: "",
       },
     },
     defaultVariants: {
@@ -43,6 +41,7 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
+  unstyled?: boolean;
 }
 
 function toTitleCase(text: string) {
@@ -57,6 +56,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     {
       className,
       variant,
+      unstyled,
       size,
       loading,
       type,
@@ -75,7 +75,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <>
         <Comp
-          className={cn(buttonVariants({ variant, size, className }))}
+          className={
+            !unstyled
+              ? buttonVariants({ variant, size, className })
+              : cn(className, "noflow nowheel nopan nodelete nodrag")
+          }
           disabled={loading || disabled}
           {...(asChild ? {} : { type: type || "button" })}
           ref={ref}
@@ -84,10 +88,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           {loading ? (
             <span className="relative">
               <span className="invisible">{newChildren}</span>
-              <span className="absolute inset-0 flex items-center justify-center">
+              <span className="absolute inset-0">
                 <ForwardedIconComponent
                   name={"Loader2"}
-                  className={"animate-spin"}
+                  className={"m-auto h-full animate-spin"}
                 />
               </span>
             </span>
